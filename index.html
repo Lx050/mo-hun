@@ -141,10 +141,20 @@
         }
 
         function saveArt() {
-            const link = document.createElement('a');
-            link.download = '墨缘_细笔.png';
-            link.href = canvas.toDataURL();
-            link.click();
+            canvas.toBlob(function(blob) {
+                if (!blob) return;
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = '墨缘_细笔.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                // 如果浏览器拦截了下载，延迟后在新标签页打开图片
+                setTimeout(function() {
+                    URL.revokeObjectURL(url);
+                }, 1000);
+            }, 'image/png');
         }
 
         window.onload = () => {
