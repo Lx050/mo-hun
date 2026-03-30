@@ -15,7 +15,7 @@
             overflow: hidden; touch-action: none;
             cursor: crosshair;
         }
-        canvas { display: block; touch-action: none; }
+        canvas { display: block; touch-action: none; background: transparent; }
         #ui {
             position: fixed; top: 20px; right: 20px;
             display: flex; gap: 10px; z-index: 10;
@@ -39,6 +39,7 @@
     <div id="ui">
         <button class="btn" onclick="resetCanvas()">涤砚</button>
         <button class="btn" onclick="saveArt()">留墨</button>
+        <button class="btn" onclick="saveTransparent()">导出透明PNG</button>
     </div>
 
     <div id="indicator">墨息</div>
@@ -47,7 +48,7 @@
 
     <script>
         const canvas = document.getElementById('brushCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
+        const ctx = canvas.getContext('2d', { alpha: true });
 
         let isDrawing = false;
         let lastX, lastY;
@@ -69,8 +70,8 @@
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            ctx.fillStyle = '#f2f0e9';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 不填充背景色，保持 Canvas 透明，纸张色由 CSS 提供
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         function getMoveData(e) {
@@ -137,23 +138,43 @@
         }
 
         function resetCanvas() {
-            resize();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
+        // 留墨：导出带纸张背景色的 PNG
         function saveArt() {
+            var tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            var tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = '#f2f0e9';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(canvas, 0, 0);
+            tempCanvas.toBlob(function(blob) {
+                if (!blob) return;
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = '墨息_留墨.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            }, 'image/png');
+        }
+
+        // 导出透明PNG：纯墨迹，无背景
+        function saveTransparent() {
             canvas.toBlob(function(blob) {
                 if (!blob) return;
                 var url = URL.createObjectURL(blob);
                 var link = document.createElement('a');
                 link.href = url;
-                link.download = '墨缘_细笔.png';
+                link.download = '墨息_透明.png';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                // 如果浏览器拦截了下载，延迟后在新标签页打开图片
-                setTimeout(function() {
-                    URL.revokeObjectURL(url);
-                }, 1000);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
             }, 'image/png');
         }
 
