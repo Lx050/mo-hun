@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>墨魂·劲草 | 细劲笔锋版</title>
+    <style>
+        :root {
+            --paper: #f2f0e9;
+            --ink: #1a1a1a;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--paper);
+            overflow: hidden; touch-action: none;
+            cursor: crosshair;
+        }
+        canvas { display: block; touch-action: none; }
+        #ui {
+            position: fixed; top: 20px; right: 20px;
+            display: flex; gap: 10px; z-index: 10;
+        }
+        .btn {
+            background: rgba(255,255,255,0.8); border: 1px solid #666;
+            padding: 6px 16px; border-radius: 2px;
+            font-family: "Noto Serif SC", serif; cursor: pointer;
+            font-size: 13px; transition: all 0.2s;
+        }
+        .btn:hover { background: #1a1a1a; color: #fff; }
+        #indicator {
+            position: fixed; bottom: 20px; left: 20px;
+            font-family: "Noto Serif SC", serif; font-size: 12px; color: #999;
+            letter-spacing: 2px; text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <button class="btn" onclick="resetCanvas()">涤砚 (清空)</button>
+        <button class="btn" onclick="saveArt()">留墨 (保存)</button>
+    </div>
+
+    <div id="indicator">细劲笔锋模拟 · 瘦金意趣</div>
+
+    <canvas id="brushCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('brushCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        let isDrawing = false;
+        let lastX, lastY;
+        let bristles = [];
+
+        function initBristles(count) {
+            bristles = [];
+            for (let i = 0; i < count; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.pow(Math.random(), 1.5);
+                bristles.push({
+                    r: r,
+                    theta: theta,
+                    size: Math.random() * 0.4 + 0.3
+                });
+            }
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.fillStyle = '#f2f0e9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function getMoveData(e) {
+            const rect = canvas.getBoundingClientRect();
+            let prs = e.pressure !== undefined && e.pressure !== 0 ? e.pressure : 0.5;
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+                pressure: prs
+            };
+        }
+
+        function start(e) {
+            isDrawing = true;
+            const data = getMoveData(e);
+            lastX = data.x;
+            lastY = data.y;
+            initBristles(40);
+        }
+
+        function move(e) {
+            if (!isDrawing) return;
+            const data = getMoveData(e);
+
+            const dx = data.x - lastX;
+            const dy = data.y - lastY;
+            const distance = Math.hypot(dx, dy);
+            if (distance < 0.5) return;
+
+            const velocity = Math.min(distance / 8, 6);
+            const pressure = data.pressure;
+            const baseRadius = 1 + (pressure * 12);
+            const steps = Math.ceil(distance / 0.5);
+
+            for (let s = 0; s < steps; s++) {
+                const t = s / steps;
+                const curX = lastX + dx * t;
+                const curY = lastY + dy * t;
+
+                bristles.forEach(b => {
+                    const offsetX = Math.cos(b.theta) * b.r * baseRadius;
+                    const offsetY = Math.sin(b.theta) * b.r * baseRadius;
+
+                    if (velocity > 1.2 && Math.random() < (velocity * 0.15)) return;
+
+                    const alpha = (0.25 + (pressure * 0.45)) * (1 - velocity * 0.08);
+                    if (alpha <= 0.01) return;
+
+                    ctx.fillStyle = `rgba(26, 26, 26, ${alpha})`;
+
+                    ctx.beginPath();
+                    const pSize = b.size * (1 + pressure * 1.2);
+                    ctx.ellipse(curX + offsetX, curY + offsetY, pSize, pSize * 0.7, Math.atan2(dy, dx), 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            lastX = data.x;
+            lastY = data.y;
+        }
+
+        function end() {
+            isDrawing = false;
+        }
+
+        function resetCanvas() {
+            resize();
+        }
+
+        function saveArt() {
+            const link = document.createElement('a');
+            link.download = '墨缘_细笔.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        window.onload = () => {
+            resize();
+            window.addEventListener('resize', resize);
+            canvas.addEventListener('pointerdown', start);
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', end);
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+        };
+    </script>
+</body>
+</html>
